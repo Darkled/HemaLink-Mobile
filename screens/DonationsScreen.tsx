@@ -7,16 +7,22 @@ import {
   FlatList,
   TextInput,
   Switch,
-  SafeAreaView,
+  Modal,
+  TouchableOpacity,
+  Platform,
+  StatusBar,
 } from 'react-native';
-import { Platform, StatusBar } from 'react-native';
+
 import { campaigns } from '../components/campaings/Campaigns';
 import { CampaignCard } from '../components/campaings/CampaignsCard';
-
 
 const DonationsScreen: React.FC = () => {
   const [query, setQuery] = useState('');
   const [darkMode, setDarkMode] = useState(false);
+
+  // 🔥 Modal
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const filtered = useMemo(
     () =>
@@ -28,8 +34,15 @@ const DonationsScreen: React.FC = () => {
 
   const theme = darkMode ? darkTheme : lightTheme;
 
+  const openModal = (campaign) => {
+    setSelectedCampaign(campaign);
+    setModalVisible(true);
+  };
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+
+      {/* HEADER */}
       <View style={styles.headerRow}>
         <Text style={[styles.title, { color: theme.text }]}>Donations</Text>
         <View style={styles.darkModeRow}>
@@ -38,6 +51,7 @@ const DonationsScreen: React.FC = () => {
         </View>
       </View>
 
+      {/* SEARCH */}
       <TextInput
         placeholder="Find campaigns..."
         placeholderTextColor={theme.placeholder}
@@ -49,6 +63,7 @@ const DonationsScreen: React.FC = () => {
         ]}
       />
 
+      {/* LISTA */}
       <FlatList
         data={filtered}
         keyExtractor={item => item.id}
@@ -57,19 +72,58 @@ const DonationsScreen: React.FC = () => {
         renderItem={({ item }) => (
           <CampaignCard
             campaign={item}
-            onPressDonate={() => {
-              // acá podrías navegar o abrir modal
-              console.log('Donate to', item.name);
-            }}
+            onPressDonate={() => openModal(item)}
           />
         )}
       />
-    </SafeAreaView>
+
+      {/* MODAL */}
+      <Modal visible={modalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+
+            <Text style={styles.modalTitle}>
+              Donate — {selectedCampaign?.name}
+            </Text>
+
+            <Text style={styles.modalLocation}>
+              {selectedCampaign?.location}
+            </Text>
+
+            <View style={styles.mapPlaceholder}>
+              <Text style={{ color: '#6b7280' }}>
+                Google Maps placeholder for: {selectedCampaign?.location}
+              </Text>
+            </View>
+
+            <Text style={styles.label}>Full name</Text>
+            <TextInput placeholder="Your full name" style={styles.input} />
+
+            <Text style={styles.label}>Email</Text>
+            <TextInput placeholder="name@example.com" style={styles.input} />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.submitButton}>
+                <Text style={styles.submitText}>Sign Up</Text>
+              </TouchableOpacity>
+            </View>
+
+          </View>
+        </View>
+      </Modal>
+
+    </View>
   );
 };
 
 export default DonationsScreen;
-
 
 const lightTheme = {
   bg: '#f3f4f6',
@@ -119,16 +173,73 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 16,
   },
-  card: {
-    width: '100%',
-    backgroundColor: '#ffffff',
+
+  // MODAL
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 12,
-    marginVertical: 8,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  modalLocation: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 12,
+  },
+  mapPlaceholder: {
+    height: 120,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 10,
+  },
+  cancelButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginRight: 10,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 8,
+  },
+  cancelText: {
+    color: '#374151',
+    fontWeight: '600',
+  },
+  submitButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: '#2563eb',
+    borderRadius: 8,
+  },
+  submitText: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });
