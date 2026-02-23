@@ -20,12 +20,22 @@ import { WebView } from 'react-native-webview';
 const getBaiduMapUrl = (lng: number, lat: number, name: string, location: string) =>
   `https://api.map.baidu.com/marker?location=${lat},${lng}&title=${encodeURIComponent(name)}&content=${encodeURIComponent(location)}&output=html`;
 
+const isValidEmail = (email: string) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
 const DonationsScreen: React.FC = () => {
   const [query, setQuery] = useState('');
   const [darkMode, setDarkMode] = useState(false);
 
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+
+  const [errors, setErrors] = useState<{ fullName?: string; email?: string; phone?: string }>({});
 
   const filtered = useMemo(
     () =>
@@ -37,9 +47,37 @@ const DonationsScreen: React.FC = () => {
 
   const theme = darkMode ? darkTheme : lightTheme;
 
+  const resetForm = () => {
+    setFullName('');
+    setEmail('');
+    setPhone('');
+    setErrors({});
+  };
+
   const openModal = (campaign) => {
+    resetForm();
     setSelectedCampaign(campaign);
     setModalVisible(true);
+  };
+
+  const handleSubmit = () => {
+    const newErrors: { fullName?: string; email?: string; phone?: string } = {};
+
+    if (!fullName.trim()) newErrors.fullName = 'Full name is required';
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!isValidEmail(email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    if (!phone.trim()) newErrors.phone = 'Phone number is required';
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length === 0) {
+      setModalVisible(false);
+      setSuccessModalVisible(true);
+      resetForm();
+    }
   };
 
   return (
@@ -104,28 +142,38 @@ const DonationsScreen: React.FC = () => {
               />
             </View>
 
-            <Text style={[styles.label, { color: theme.text }]}>Full name</Text>
+            <Text style={[styles.label, { color: theme.text }]}>Full name <Text style={styles.required}>*</Text></Text>
             <TextInput
               placeholder="Your full name"
               placeholderTextColor={theme.placeholder}
-              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
+              value={fullName}
+              onChangeText={(t) => { setFullName(t); setErrors(e => ({ ...e, fullName: undefined })); }}
+              style={[styles.input, { borderColor: errors.fullName ? '#ef4444' : theme.border, color: theme.text, backgroundColor: theme.bg }]}
             />
+            {errors.fullName && <Text style={styles.errorText}>{errors.fullName}</Text>}
 
-            <Text style={[styles.label, { color: theme.text }]}>Email</Text>
+            <Text style={[styles.label, { color: theme.text }]}>Email <Text style={styles.required}>*</Text></Text>
             <TextInput
               placeholder="name@example.com"
               placeholderTextColor={theme.placeholder}
               keyboardType="email-address"
-              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
+              autoCapitalize="none"
+              value={email}
+              onChangeText={(t) => { setEmail(t); setErrors(e => ({ ...e, email: undefined })); }}
+              style={[styles.input, { borderColor: errors.email ? '#ef4444' : theme.border, color: theme.text, backgroundColor: theme.bg }]}
             />
+            {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
-            <Text style={[styles.label, { color: theme.text }]}>Phone number</Text>
+            <Text style={[styles.label, { color: theme.text }]}>Phone number <Text style={styles.required}>*</Text></Text>
             <TextInput
               placeholder="+1 (555) 000-0000"
               placeholderTextColor={theme.placeholder}
               keyboardType="phone-pad"
-              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
+              value={phone}
+              onChangeText={(t) => { setPhone(t); setErrors(e => ({ ...e, phone: undefined })); }}
+              style={[styles.input, { borderColor: errors.phone ? '#ef4444' : theme.border, color: theme.text, backgroundColor: theme.bg }]}
             />
+            {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -135,11 +183,31 @@ const DonationsScreen: React.FC = () => {
                 <Text style={[styles.cancelText, { color: theme.text }]}>Cancel</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.submitButton}>
+              <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
                 <Text style={styles.submitText}>Sign Up</Text>
               </TouchableOpacity>
             </View>
 
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={successModalVisible} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card, alignItems: 'center' }]}>
+            <Text style={{ fontSize: 48, marginBottom: 12 }}>✅</Text>
+            <Text style={[styles.modalTitle, { color: theme.text, textAlign: 'center' }]}>
+              Sign-up successful!
+            </Text>
+            <Text style={{ color: theme.placeholder, textAlign: 'center', marginTop: 4, marginBottom: 20 }}>
+              You have been registered for {selectedCampaign?.name}. We will contact you soon.
+            </Text>
+            <TouchableOpacity
+              style={styles.submitButton}
+              onPress={() => setSuccessModalVisible(false)}
+            >
+              <Text style={styles.submitText}>OK</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -272,5 +340,14 @@ const styles = StyleSheet.create({
   submitText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  required: {
+    color: '#ef4444',
+  },
+  errorText: {
+    color: '#ef4444',
+    fontSize: 12,
+    marginTop: -8,
+    marginBottom: 8,
   },
 });
