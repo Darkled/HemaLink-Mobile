@@ -1,8 +1,8 @@
-// DonationsScreen.tsx
 import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   FlatList,
   TextInput,
@@ -15,12 +15,15 @@ import {
 
 import { campaigns } from '../components/campaings/Campaigns';
 import { CampaignCard } from '../components/campaings/CampaignsCard';
+import { WebView } from 'react-native-webview';
+
+const getBaiduMapUrl = (lng: number, lat: number, name: string, location: string) =>
+  `https://api.map.baidu.com/marker?location=${lat},${lng}&title=${encodeURIComponent(name)}&content=${encodeURIComponent(location)}&output=html`;
 
 const DonationsScreen: React.FC = () => {
   const [query, setQuery] = useState('');
   const [darkMode, setDarkMode] = useState(false);
 
-  // 🔥 Modal
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -42,16 +45,21 @@ const DonationsScreen: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
 
-      {/* HEADER */}
       <View style={styles.headerRow}>
-        <Text style={[styles.title, { color: theme.text }]}>Donations</Text>
+        <View style={styles.brandRow}>
+          <Image
+            source={require('../assets/hemalink_isotype.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={[styles.brandText, { color: theme.text }]}>HemaLink</Text>
+        </View>
         <View style={styles.darkModeRow}>
           <Text style={{ color: theme.text, marginRight: 6 }}>Dark Mode</Text>
           <Switch value={darkMode} onValueChange={setDarkMode} />
         </View>
       </View>
 
-      {/* SEARCH */}
       <TextInput
         placeholder="Find campaigns..."
         placeholderTextColor={theme.placeholder}
@@ -63,7 +71,6 @@ const DonationsScreen: React.FC = () => {
         ]}
       />
 
-      {/* LISTA */}
       <FlatList
         data={filtered}
         keyExtractor={item => item.id}
@@ -72,42 +79,60 @@ const DonationsScreen: React.FC = () => {
         renderItem={({ item }) => (
           <CampaignCard
             campaign={item}
+            theme={theme}
             onPressDonate={() => openModal(item)}
           />
         )}
       />
 
-      {/* MODAL */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
 
-            <Text style={styles.modalTitle}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
               Donate — {selectedCampaign?.name}
             </Text>
 
-            <Text style={styles.modalLocation}>
+            <Text style={[styles.modalLocation, { color: theme.placeholder }]}>
               {selectedCampaign?.location}
             </Text>
 
-            <View style={styles.mapPlaceholder}>
-              <Text style={{ color: '#6b7280' }}>
-                Google Maps placeholder for: {selectedCampaign?.location}
-              </Text>
+            <View style={[styles.mapContainer, { backgroundColor: theme.bg }]}>
+              <WebView
+                source={{ uri: getBaiduMapUrl(116.404, 39.915, selectedCampaign?.name ?? '', selectedCampaign?.location ?? '') }}
+                style={{ flex: 1 }}
+              />
             </View>
 
-            <Text style={styles.label}>Full name</Text>
-            <TextInput placeholder="Your full name" style={styles.input} />
+            <Text style={[styles.label, { color: theme.text }]}>Full name</Text>
+            <TextInput
+              placeholder="Your full name"
+              placeholderTextColor={theme.placeholder}
+              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
+            />
 
-            <Text style={styles.label}>Email</Text>
-            <TextInput placeholder="name@example.com" style={styles.input} />
+            <Text style={[styles.label, { color: theme.text }]}>Email</Text>
+            <TextInput
+              placeholder="name@example.com"
+              placeholderTextColor={theme.placeholder}
+              keyboardType="email-address"
+              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
+            />
+
+            <Text style={[styles.label, { color: theme.text }]}>Phone number</Text>
+            <TextInput
+              placeholder="+1 (555) 000-0000"
+              placeholderTextColor={theme.placeholder}
+              keyboardType="phone-pad"
+              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
+            />
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={styles.cancelButton}
+                style={[styles.cancelButton, { backgroundColor: theme.border }]}
                 onPress={() => setModalVisible(false)}
               >
-                <Text style={styles.cancelText}>Cancel</Text>
+                <Text style={[styles.cancelText, { color: theme.text }]}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.submitButton}>
@@ -136,9 +161,9 @@ const lightTheme = {
 const darkTheme = {
   bg: '#020617',
   text: '#e5e7eb',
-  card: '#020617',
-  border: '#1f2937',
-  placeholder: '#6b7280',
+  card: '#1e293b',
+  border: '#334155',
+  placeholder: '#94a3b8',
 };
 
 const styles = StyleSheet.create({
@@ -154,7 +179,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 12,
   },
-  title: {
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logo: {
+    width: 28,
+    height: 28,
+    marginRight: 8,
+  },
+  brandText: {
     fontSize: 22,
     fontWeight: '700',
   },
@@ -174,7 +208,6 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
 
-  // MODAL
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -196,12 +229,10 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginBottom: 12,
   },
-  mapPlaceholder: {
-    height: 120,
-    backgroundColor: '#f3f4f6',
+  mapContainer: {
+    height: 160,
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    overflow: 'hidden',
     marginBottom: 16,
   },
   label: {

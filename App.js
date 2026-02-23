@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
-import DonationsScreen from '../HemaLink-Mobile/screens/DonationsScreen';
+import DonationsScreen from './screens/DonationsScreen';
 
 export default function App() {
   return (
@@ -16,4 +16,3 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-

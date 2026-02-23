@@ -1,4 +1,3 @@
-// campaigns.ts
 export type CampaignStatus = 'Open' | 'Completed' | 'Urgent' | 'Deleted';
 
 export type Campaign = {

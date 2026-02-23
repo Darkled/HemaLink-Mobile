@@ -1,7 +1,14 @@
-// CampaignCard.tsx
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import type { Campaign, CampaignStatus } from './Campaigns';
+
+export type CardTheme = {
+  bg: string;
+  text: string;
+  card: string;
+  border: string;
+  placeholder: string;
+};
 
 const statusColors: Record<CampaignStatus, string> = {
   Open: '#16a34a',
@@ -13,13 +20,22 @@ const statusColors: Record<CampaignStatus, string> = {
 type Props = {
   campaign: Campaign;
   onPressDonate?: () => void;
+  theme?: CardTheme;
 };
 
-export const CampaignCard: React.FC<Props> = ({ campaign, onPressDonate }) => {
+const defaultTheme: CardTheme = {
+  bg: '#f3f4f6',
+  text: '#111827',
+  card: '#ffffff',
+  border: '#e5e7eb',
+  placeholder: '#9ca3af',
+};
+
+export const CampaignCard: React.FC<Props> = ({ campaign, onPressDonate, theme = defaultTheme }) => {
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
       <View style={styles.headerRow}>
-        <Text style={styles.title} numberOfLines={2}>
+        <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
           {campaign.name}
         </Text>
         <View style={[styles.statusBadge, { backgroundColor: statusColors[campaign.status] + '22' }]}>
@@ -31,19 +47,19 @@ export const CampaignCard: React.FC<Props> = ({ campaign, onPressDonate }) => {
       </View>
 
       <View style={styles.infoBlock}>
-        <Text style={styles.label}>Date</Text>
-        <Text style={styles.value}>{campaign.date}</Text>
+        <Text style={[styles.label, { color: theme.placeholder }]}>Date</Text>
+        <Text style={[styles.value, { color: theme.text }]}>{campaign.date}</Text>
       </View>
 
       <View style={styles.infoBlock}>
-        <Text style={styles.label}>Location</Text>
-        <Text style={styles.value} numberOfLines={2}>
+        <Text style={[styles.label, { color: theme.placeholder }]}>Location</Text>
+        <Text style={[styles.value, { color: theme.text }]} numberOfLines={2}>
           {campaign.location}
         </Text>
       </View>
 
       <View style={styles.footerRow}>
-        <Text style={styles.donations}>{campaign.donations} donations</Text>
+        <Text style={[styles.donations, { color: theme.placeholder }]}>{campaign.donations} donations</Text>
         <TouchableOpacity
           style={styles.button}
           onPress={onPressDonate}
