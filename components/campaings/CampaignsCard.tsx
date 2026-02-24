@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { bloodTypeLabels } from './Campaigns';
 import type { Campaign, CampaignStatus } from './Campaigns';
 
 export type CardTheme = {
@@ -31,39 +32,57 @@ const defaultTheme: CardTheme = {
   placeholder: '#9ca3af',
 };
 
+const formatDate = (iso: string) => {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+};
+
 export const CampaignCard: React.FC<Props> = ({ campaign, onPressDonate, theme = defaultTheme }) => {
+  const status = campaign.requestStatus as CampaignStatus;
+
   return (
     <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
       <View style={styles.headerRow}>
         <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
-          {campaign.name}
+          {campaign.requesterName}
         </Text>
-        <View style={[styles.statusBadge, { backgroundColor: statusColors[campaign.status] + '22' }]}>
-          <View style={[styles.statusDot, { backgroundColor: statusColors[campaign.status] }]} />
-          <Text style={[styles.statusText, { color: statusColors[campaign.status] }]}>
-            {campaign.status}
+        <View style={[styles.statusBadge, { backgroundColor: statusColors[status] + '22' }]}>
+          <View style={[styles.statusDot, { backgroundColor: statusColors[status] }]} />
+          <Text style={[styles.statusText, { color: statusColors[status] }]}>
+            {status}
           </Text>
         </View>
       </View>
 
       <View style={styles.infoBlock}>
         <Text style={[styles.label, { color: theme.placeholder }]}>Date</Text>
-        <Text style={[styles.value, { color: theme.text }]}>{campaign.date}</Text>
+        <Text style={[styles.value, { color: theme.text }]}>{formatDate(campaign.requestDate)}</Text>
       </View>
 
       <View style={styles.infoBlock}>
-        <Text style={[styles.label, { color: theme.placeholder }]}>Location</Text>
+        <Text style={[styles.label, { color: theme.placeholder }]}>Address</Text>
         <Text style={[styles.value, { color: theme.text }]} numberOfLines={2}>
-          {campaign.location}
+          {campaign.address}
         </Text>
       </View>
 
+      {campaign.bloodTypesNeeded && campaign.bloodTypesNeeded.length > 0 && (
+        <View style={styles.infoBlock}>
+          <Text style={[styles.label, { color: theme.placeholder }]}>Blood Types Needed</Text>
+          <Text style={[styles.value, { color: theme.text }]}>
+            {campaign.bloodTypesNeeded.map(bt => bloodTypeLabels[bt] ?? bt).join(', ')}
+          </Text>
+        </View>
+      )}
+
       <View style={styles.footerRow}>
-        <Text style={[styles.donations, { color: theme.placeholder }]}>{campaign.donations} donations</Text>
+        <Text style={[styles.donations, { color: theme.placeholder }]}>
+          {campaign.remainingUnits}/{campaign.targetUnits} units remaining
+        </Text>
         <TouchableOpacity
           style={styles.button}
           onPress={onPressDonate}
-          disabled={campaign.status === 'Deleted'}
+          disabled={status === 'Deleted'}
         >
           <Text style={styles.buttonText}>I Want to Donate</Text>
         </TouchableOpacity>

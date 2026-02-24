@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,10 +11,12 @@ import {
   TouchableOpacity,
   Platform,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 
-import { campaigns } from '../components/campaings/Campaigns';
+import type { Campaign } from '../components/campaings/Campaigns';
 import { CampaignCard } from '../components/campaings/CampaignsCard';
+import { fetchCampaigns, signUpForDonation } from '../services/campaignService';
 import { WebView } from 'react-native-webview';
 
 const getBaiduMapUrl = (lng: number, lat: number, name: string, location: string) =>
@@ -27,7 +29,11 @@ const DonationsScreen: React.FC = () => {
   const [query, setQuery] = useState('');
   const [darkMode, setDarkMode] = useState(false);
 
-  const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
 
@@ -35,14 +41,16 @@ const DonationsScreen: React.FC = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
 
+  const [submitting, setSubmitting] = useState(false);
+
   const [errors, setErrors] = useState<{ fullName?: string; email?: string; phone?: string }>({});
 
   const filtered = useMemo(
     () =>
       campaigns.filter(c =>
-        c.name.toLowerCase().includes(query.toLowerCase().trim()),
+        c.requesterName.toLowerCase().includes(query.toLowerCase().trim()),
       ),
-    [query],
+    [query, campaigns],
   );
 
   const theme = darkMode ? darkTheme : lightTheme;
@@ -54,13 +62,13 @@ const DonationsScreen: React.FC = () => {
     setErrors({});
   };
 
-  const openModal = (campaign) => {
+  const openModal = (campaign: Campaign) => {
     resetForm();
     setSelectedCampaign(campaign);
     setModalVisible(true);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const newErrors: { fullName?: string; email?: string; phone?: string } = {};
 
     if (!fullName.trim()) newErrors.fullName = 'Full name is required';
@@ -73,12 +81,43 @@ const DonationsScreen: React.FC = () => {
 
     setErrors(newErrors);
 
-    if (Object.keys(newErrors).length === 0) {
-      setModalVisible(false);
-      setSuccessModalVisible(true);
-      resetForm();
+    if (Object.keys(newErrors).length === 0 && selectedCampaign) {
+      try {
+        setSubmitting(true);
+        await signUpForDonation({
+          bloodRequestId: selectedCampaign.requestId,
+          donorName: fullName.trim(),
+          donorEmail: email.trim(),
+          donorPhone: phone.trim(),
+        });
+        setModalVisible(false);
+        setSuccessModalVisible(true);
+        resetForm();
+        loadCampaigns();
+      } catch (err: any) {
+        setErrors({ fullName: err.message || 'Sign-up failed. Please try again.' });
+      } finally {
+        setSubmitting(false);
+      }
     }
   };
+
+  const loadCampaigns = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchCampaigns();
+      setCampaigns(data);
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCampaigns();
+  }, [loadCampaigns]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
@@ -111,9 +150,25 @@ const DonationsScreen: React.FC = () => {
 
       <FlatList
         data={filtered}
-        keyExtractor={item => item.id}
+        keyExtractor={item => String(item.requestId)}
         numColumns={1}
         contentContainerStyle={styles.listContent}
+        ListEmptyComponent={
+          loading ? (
+            <ActivityIndicator size="large" color="#2563eb" style={{ marginTop: 32 }} />
+          ) : error ? (
+            <View style={{ alignItems: 'center', marginTop: 32 }}>
+              <Text style={{ color: '#ef4444', marginBottom: 12 }}>{error}</Text>
+              <TouchableOpacity style={styles.submitButton} onPress={loadCampaigns}>
+                <Text style={styles.submitText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <Text style={{ color: theme.placeholder, textAlign: 'center', marginTop: 32 }}>
+              No campaigns found.
+            </Text>
+          )
+        }
         renderItem={({ item }) => (
           <CampaignCard
             campaign={item}
@@ -128,16 +183,16 @@ const DonationsScreen: React.FC = () => {
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
 
             <Text style={[styles.modalTitle, { color: theme.text }]}>
-              Donate — {selectedCampaign?.name}
+              Donate — {selectedCampaign?.requesterName}
             </Text>
 
             <Text style={[styles.modalLocation, { color: theme.placeholder }]}>
-              {selectedCampaign?.location}
+              {selectedCampaign?.address}
             </Text>
 
             <View style={[styles.mapContainer, { backgroundColor: theme.bg }]}>
               <WebView
-                source={{ uri: getBaiduMapUrl(116.404, 39.915, selectedCampaign?.name ?? '', selectedCampaign?.location ?? '') }}
+                source={{ uri: getBaiduMapUrl(116.404, 39.915, selectedCampaign?.requesterName ?? '', selectedCampaign?.address ?? '') }}
                 style={{ flex: 1 }}
               />
             </View>
@@ -183,8 +238,12 @@ const DonationsScreen: React.FC = () => {
                 <Text style={[styles.cancelText, { color: theme.text }]}>Cancel</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-                <Text style={styles.submitText}>Sign Up</Text>
+              <TouchableOpacity
+                style={[styles.submitButton, submitting && { opacity: 0.6 }]}
+                onPress={handleSubmit}
+                disabled={submitting}
+              >
+                <Text style={styles.submitText}>{submitting ? 'Signing up...' : 'Sign Up'}</Text>
               </TouchableOpacity>
             </View>
 
@@ -200,7 +259,7 @@ const DonationsScreen: React.FC = () => {
               Sign-up successful!
             </Text>
             <Text style={{ color: theme.placeholder, textAlign: 'center', marginTop: 4, marginBottom: 20 }}>
-              You have been registered for {selectedCampaign?.name}. We will contact you soon.
+              You have been registered for {selectedCampaign?.requesterName}. We will contact you soon.
             </Text>
             <TouchableOpacity
               style={styles.submitButton}
